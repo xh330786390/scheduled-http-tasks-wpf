@@ -1,0 +1,60 @@
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# NuGet Packages
+packages/
+*.nupkg
+*.nuget.props
+*.nuget.targets
+
+# Test results
+coverage/
+*.trx
+*.vstestresults
+TestResults/
+
+# Logs
+*.log
+*.txt
+*.tmp
+
+# Database
+*.db
+*.sqlite
+*.mdf
+*.ldf
+
+# Application data
+*.config
+*.settings
+*.xml
+*.json
+
+# Rider
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
