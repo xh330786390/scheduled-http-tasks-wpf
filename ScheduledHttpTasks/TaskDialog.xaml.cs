@@ -231,6 +231,49 @@ namespace ScheduledHttpTasks
             }
         }
 
+        private async void SendTest_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 验证必填字段
+                if (string.IsNullOrWhiteSpace(Task.Url))
+                {
+                    TestResultTextBox.Text = "错误: API URL不能为空";
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(Task.Method))
+                {
+                    TestResultTextBox.Text = "错误: 请求方法不能为空";
+                    return;
+                }
+
+                // 显示正在测试的信息
+                TestResultTextBox.Text = "正在发送测试请求...";
+
+                // 创建临时任务对象用于测试
+                var testTask = new ScheduledTask
+                {
+                    Name = Task.Name + " (测试)",
+                    Url = Task.Url,
+                    Method = Task.Method,
+                    Headers = Task.Headers,
+                    Body = Task.Body
+                };
+
+                // 调用API测试
+                var result = await ApiCaller.CallApiAsync(testTask);
+                
+                // 显示成功结果
+                TestResultTextBox.Text = $"✅ 测试成功！\n{result}";
+            }
+            catch (Exception ex)
+            {
+                // 显示错误信息
+                TestResultTextBox.Text = $"❌ 测试失败！\n错误信息: {ex.Message}";
+            }
+        }
+
         private void SetTime_Click(object sender, RoutedEventArgs e)
         {
             // 创建时间选择对话框

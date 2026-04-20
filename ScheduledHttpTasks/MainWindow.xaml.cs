@@ -71,7 +71,6 @@ namespace ScheduledHttpTasks
         public ICommand StartTaskCommand { get; }
         public ICommand StopTaskCommand { get; }
         public ICommand TestTaskCommand { get; }
-        public ICommand ViewLogsCommand { get; }
         public ICommand RefreshLogsCommand { get; }
         public ICommand ClearLogsCommand { get; }
 
@@ -79,6 +78,7 @@ namespace ScheduledHttpTasks
         {
             InitializeComponent();
             DataContext = this;
+            LoadLogoImage();
 
             AddTaskCommand = new RelayCommand(AddTask);
             EditTaskCommand = new RelayCommand(EditTask, () => SelectedTask != null);
@@ -86,7 +86,6 @@ namespace ScheduledHttpTasks
             StartTaskCommand = new RelayCommand(StartTask, () => SelectedTask != null);
             StopTaskCommand = new RelayCommand(StopTask, () => SelectedTask != null);
             TestTaskCommand = new RelayCommand(TestTask, () => SelectedTask != null);
-            ViewLogsCommand = new RelayCommand(ViewLogs, () => SelectedTask != null);
             RefreshLogsCommand = new RelayCommand(RefreshLogs);
             ClearLogsCommand = new RelayCommand(ClearLogs);
 
@@ -115,8 +114,12 @@ namespace ScheduledHttpTasks
             {
                 task.PropertyChanged += OnTaskPropertyChanged;
                 
-                // 确保任务状态正确反映实际运行状态
-                task.Status = TaskScheduler.IsTaskRunning(task.Id) ? "运行中" : "已停止";
+                // 确保状态值只使用"已启动"或"已停止"
+                if (task.Status != "待启动" && task.Status != "已启动" && task.Status != "已停止")
+                {
+                    // 如果状态值不正确，设置为默认值"待启动"
+                    task.Status = "待启动";
+                }
             }
         }
         
@@ -131,10 +134,17 @@ namespace ScheduledHttpTasks
 
         private void UpdateTaskStatus()
         {
-            // 只更新当前选中任务的状态，避免影响其他任务
+            // 不再根据调度器状态覆盖数据库状态
+            // 状态应该直接从数据库加载，保持一致性
+            // 只使用"已启动"和"已停止"两个状态值
             if (SelectedTask != null)
             {
-                SelectedTask.Status = TaskScheduler.IsTaskRunning(SelectedTask.Id) ? "运行中" : "已停止";
+                // 确保状态值只使用"已启动"或"已停止"
+                if (SelectedTask.Status != "待启动" && SelectedTask.Status != "已启动" && SelectedTask.Status != "已停止")
+                {
+                    // 如果状态值不正确，设置为默认值"待启动"
+                    SelectedTask.Status = "待启动";
+                }
             }
         }
 
@@ -168,7 +178,8 @@ namespace ScheduledHttpTasks
                 Url = "https://api.example.com",
                 CronExpression = "0 0 0 * * ?",
                 Headers = "{}",
-                Body = "{}"
+                Body = "{}",
+                Status = "待启动"
             };
 
             var dialog = new TaskDialog(task);
@@ -177,6 +188,8 @@ namespace ScheduledHttpTasks
                 TaskRepository.SaveTask(task);
                 LoadTasks();
                 UpdateTaskStatus();
+                // 更新下拉列表选项
+                UpdateTaskFilterOptions();
             }
         }
 
@@ -192,7 +205,8 @@ namespace ScheduledHttpTasks
                 Url = SelectedTask.Url,
                 CronExpression = SelectedTask.CronExpression,
                 Headers = SelectedTask.Headers,
-                Body = SelectedTask.Body
+                Body = SelectedTask.Body,
+                Status = SelectedTask.Status
             };
 
             var dialog = new TaskDialog(task);
@@ -227,8 +241,10 @@ namespace ScheduledHttpTasks
             {
                 Console.WriteLine($"开始启动任务: {SelectedTask.Name}");
                 await TaskScheduler.StartTask(SelectedTask);
-                // 直接设置状态，不再调用UpdateTaskStatus()
-                SelectedTask.Status = "运行中";
+                // 更新数据库状态
+                TaskRepository.UpdateTaskStatus(SelectedTask.Id, "已启动");
+                // 更新UI状态
+                SelectedTask.Status = "已启动";
                 Console.WriteLine($"任务 {SelectedTask.Name} 启动成功");
                 MessageBox.Show("任务已启动", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -246,7 +262,9 @@ namespace ScheduledHttpTasks
             try
             {
                 TaskScheduler.StopTask(SelectedTask.Id);
-                // 直接设置状态，不再调用UpdateTaskStatus()
+                // 更新数据库状态
+                TaskRepository.UpdateTaskStatus(SelectedTask.Id, "已停止");
+                // 更新UI状态
                 SelectedTask.Status = "已停止";
                 MessageBox.Show("任务已停止", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -285,13 +303,62 @@ namespace ScheduledHttpTasks
             }
         }
 
-        private void ViewLogs()
+        private void LoadLogoImage()
         {
-            if (SelectedTask == null) return;
-            
-            // 确保日志区域可见
-            LoadTaskLogs();
-            MessageBox.Show($"正在显示任务 '{SelectedTask.Name}' 的执行日志", "查看日志", MessageBoxButton.OK, MessageBoxImage.Information);
+            try
+            {
+                // 从嵌入式资源加载logo图片
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                
+                // 尝试不同的资源名称格式
+                string[] possibleResourceNames = {
+                    "ScheduledHttpTasks.resources.logo.png",
+                    "ScheduledHttpTasks.logo.png",
+                    "logo.png"
+                };
+                
+                System.IO.Stream resourceStream = null;
+                string foundResourceName = null;
+                
+                foreach (var resourceName in possibleResourceNames)
+                {
+                    resourceStream = assembly.GetManifestResourceStream(resourceName);
+                    if (resourceStream != null)
+                    {
+                        foundResourceName = resourceName;
+                        break;
+                    }
+                }
+                
+                if (resourceStream != null)
+                {
+                    var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.StreamSource = resourceStream;
+                    bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+                    LogoImage.Source = bitmap;
+                }
+                else
+                {
+                    // 如果资源不存在，显示所有可用的资源名称用于调试
+                    var allResources = assembly.GetManifestResourceNames();
+                    string availableResources = string.Join("\n", allResources);
+                    System.Windows.MessageBox.Show($"Logo图片资源不存在，尝试了以下名称:\n{string.Join("\n", possibleResourceNames)}\n\n可用的资源:\n{availableResources}", 
+                        "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"加载Logo图片失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void HelpButton_Click(object sender, RoutedEventArgs e)
+        {
+            var helpWindow = new HelpWindow();
+            helpWindow.Owner = this;
+            helpWindow.ShowDialog();
         }
 
         private void CopyTask_Click(object sender, RoutedEventArgs e)

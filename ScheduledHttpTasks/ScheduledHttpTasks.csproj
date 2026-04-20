@@ -19,7 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="resources\logo.png" />
+    <EmbeddedResource Include="resources\logo.png" />
+    <EmbeddedResource Include="resources\wxin_erweima.png" />
   </ItemGroup>
 
 </Project>

@@ -7,7 +7,7 @@
         xmlns:local="clr-namespace:ScheduledHttpTasks"
         mc:Ignorable="d"
         Title="星火任务调度器"
-        Height="600" Width="1000"
+        Height="800" Width="1100"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="10">
         <Grid.RowDefinitions>
@@ -23,7 +23,7 @@
             </Grid.ColumnDefinitions>
             
             <!-- Logo -->
-            <Image Grid.Column="0" Source="/ScheduledHttpTasks;component/resources/logo.png" Width="40" Height="40" Margin="0,0,10,0" />
+            <Image Grid.Column="0" x:Name="LogoImage" Width="40" Height="40" Margin="0,0,10,0" />
             
             <!-- 工具栏 -->
             <ToolBar Grid.Column="1" Height="40">
@@ -36,7 +36,7 @@
                 <Separator />
                 <Button Content="执行测试" Command="{Binding TestTaskCommand}" Width="80" Height="30" />
                 <Separator />
-                <Button Content="查看执行日志" Command="{Binding ViewLogsCommand}" Width="100" Height="30" />
+                <Button Content="帮助与支持" Click="HelpButton_Click" Width="80" Height="30" />
             </ToolBar>
         </Grid>
 
@@ -57,6 +57,7 @@
                       SelectedItem="{Binding SelectedTask}"
                       AutoGenerateColumns="False"
                       CanUserAddRows="False"
+                      IsReadOnly="True"
                       SelectionMode="Single"
                       RowHeight="30">
                 <DataGrid.CellStyle>

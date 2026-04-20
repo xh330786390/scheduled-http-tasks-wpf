@@ -52,10 +52,12 @@ namespace ScheduledHttpTasks
                     connection.Open();
                     
                     var sql = @"
-                        INSERT INTO Tasks (Name, Url, Method, Headers, Body, CronExpression)
-                        VALUES (@Name, @Url, @Method, @Headers, @Body, @CronExpression)";
+                        INSERT INTO Tasks (Name, Url, Method, Headers, Body, CronExpression, Status)
+                        VALUES (@Name, @Url, @Method, @Headers, @Body, @CronExpression, @Status);
+                        SELECT last_insert_rowid();";
                     
                     var id = connection.ExecuteScalar<int>(sql, task);
+                    task.Id = id; // 设置任务的ID
                     return id;
                 }
             }
@@ -77,7 +79,7 @@ namespace ScheduledHttpTasks
                     var sql = @"
                         UPDATE Tasks 
                         SET Name = @Name, Url = @Url, Method = @Method, Headers = @Headers, Body = @Body,
-                            CronExpression = @CronExpression, UpdatedAt = CURRENT_TIMESTAMP
+                            CronExpression = @CronExpression, Status = @Status, UpdatedAt = CURRENT_TIMESTAMP
                         WHERE Id = @Id";
                     
                     return connection.Execute(sql, task) > 0;
@@ -86,6 +88,29 @@ namespace ScheduledHttpTasks
             catch (Exception ex)
             {
                 Console.WriteLine($"更新任务失败: {ex.Message}");
+                return false;
+            }
+        }
+
+        public static bool UpdateTaskStatus(int taskId, string status)
+        {
+            try
+            {
+                using (var connection = DatabaseInitializer.GetConnection())
+                {
+                    connection.Open();
+                    
+                    var sql = @"
+                        UPDATE Tasks 
+                        SET Status = @Status, UpdatedAt = CURRENT_TIMESTAMP
+                        WHERE Id = @TaskId";
+                    
+                    return connection.Execute(sql, new { TaskId = taskId, Status = status }) > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"更新任务状态失败: {ex.Message}");
                 return false;
             }
         }

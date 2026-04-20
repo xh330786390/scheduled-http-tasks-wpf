@@ -135,6 +135,8 @@ namespace ScheduledHttpTasks
                 }
 
                 await ScheduleTaskInternal(task);
+                // 更新数据库状态
+                TaskRepository.UpdateTaskStatus(task.Id, "已启动");
                 Console.WriteLine($"任务 {task.Name} 已启动，Cron表达式: {task.CronExpression}");
                 
                 // 立即检查任务是否已调度
@@ -180,6 +182,9 @@ namespace ScheduledHttpTasks
             
             _runningJobs.Remove(taskId);
             _runningTriggers.Remove(taskId);
+            
+            // 更新数据库状态
+            TaskRepository.UpdateTaskStatus(taskId, "已停止");
             
             Console.WriteLine($"任务 {taskId} 已停止");
         }
@@ -289,9 +294,6 @@ namespace ScheduledHttpTasks
                     var result = await ApiCaller.CallApiAsync(task);
                     Console.WriteLine($"任务执行完成: {task.Name} - {result}");
                     
-                    // 更新任务状态为成功
-                    UpdateTaskStatus(taskId, "执行成功");
-                    
                     // 触发日志更新事件
                     Console.WriteLine($"准备触发任务执行事件: {taskId}");
                     TaskScheduler.OnTaskExecuted(taskId);
@@ -307,9 +309,6 @@ namespace ScheduledHttpTasks
                 Console.WriteLine($"任务执行失败: {ex.Message}");
                 Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
                 
-                // 更新任务状态为失败
-                UpdateTaskStatus(taskId, $"执行失败: {ex.Message}");
-                
                 // 触发日志更新事件
                 Console.WriteLine($"准备触发任务失败事件: {taskId}");
                 TaskScheduler.OnTaskExecuted(taskId);
@@ -321,7 +320,8 @@ namespace ScheduledHttpTasks
         {
             try
             {
-                // 这里可以添加额外的状态更新逻辑
+                // 更新数据库中的任务状态
+                TaskRepository.UpdateTaskStatus(taskId, status);
                 Console.WriteLine($"任务 {taskId} 状态更新为: {status}");
             }
             catch (Exception ex)

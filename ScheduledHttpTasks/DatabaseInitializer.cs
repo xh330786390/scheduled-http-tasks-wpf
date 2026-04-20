@@ -35,6 +35,7 @@ namespace ScheduledHttpTasks
                             Headers TEXT,
                             Body TEXT,
                             CronExpression TEXT NOT NULL,
+                            Status TEXT NOT NULL DEFAULT '已启动',
                             CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
                             UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
                         )";
@@ -84,6 +85,34 @@ namespace ScheduledHttpTasks
                     {
                         // 如果表不存在或列已存在，忽略错误
                         Console.WriteLine($"数据库表检查: {ex.Message}");
+                    }
+
+                    // 检查并添加缺失的Status列到Tasks表
+                    try
+                    {
+                        var checkStatusSql = "SELECT Status FROM Tasks LIMIT 1";
+                        using (var command = new SQLiteCommand(checkStatusSql, connection))
+                        {
+                            command.ExecuteScalar();
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Status列不存在，需要添加
+                        var alterTasksSql = "ALTER TABLE Tasks ADD COLUMN Status TEXT NOT NULL DEFAULT '已启动'";
+                        using (var command = new SQLiteCommand(alterTasksSql, connection))
+                        {
+                            command.ExecuteNonQuery();
+                            Console.WriteLine("已添加Status列到Tasks表");
+                            
+                            // 更新现有任务的默认状态
+                            var updateStatusSql = "UPDATE Tasks SET Status = '已启动' WHERE Status IS NULL OR Status = ''";
+                            using (var updateCommand = new SQLiteCommand(updateStatusSql, connection))
+                            {
+                                updateCommand.ExecuteNonQuery();
+                                Console.WriteLine("已更新现有任务的状态");
+                            }
+                        }
                     }
 
                     Console.WriteLine("数据库初始化完成");
